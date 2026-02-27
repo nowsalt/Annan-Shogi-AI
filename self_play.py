@@ -15,7 +15,9 @@ from annan_shogi import Game, Color
 from config import Config
 from encoder import encode_state, move_to_index
 from model import AnnanNet
+from inferencer import BatchInferencer
 from player import AIPlayer
+import concurrent.futures
 
 
 def self_play_game(player: AIPlayer, config: Config) -> list[dict]:
@@ -94,20 +96,37 @@ def run_self_play(model: AnnanNet, config: Config, num_games: int = None):
         num_games = config.num_self_play_games
 
     model.eval()
-    player = AIPlayer(model, config)
+    
+    # バッチ推論器を起動
+    inferencer = BatchInferencer(model, config)
     all_data = []
 
-    print(f"  自己対局 {num_games}局開始...")
+    print(f"  自己対局 {num_games}局開始 (並列推論)...")
+    
+    # メモリ節約のため、最大並列数を制御 (例: CPU/GPUに合わせて16〜32スレッド)
+    max_workers = getattr(config, "self_play_threads", 32)
+    
     with tqdm(total=num_games, desc="Self-Play Games") as pbar:
-        for i in range(num_games):
-            t0 = time.time()
-            game_data = self_play_game(player, config)
-            elapsed = time.time() - t0
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # プレイヤーインスタンスを各スレッドで作成するため、関数にラップする
+            def simulate_game(_):
+                player = AIPlayer(inferencer, config)
+                data = self_play_game(player, config)
+                return data
 
-            all_data.extend(game_data)
-            pbar.set_postfix({"last_moves": len(game_data), "time": f"{elapsed:.1f}s"})
-            pbar.update(1)
+            # タスクを発行
+            futures = [executor.submit(simulate_game, i) for i in range(num_games)]
+            
+            # 完了したものから順次回収
+            for future in concurrent.futures.as_completed(futures):
+                game_data = future.result()
+                all_data.extend(game_data)
+                
+                # JITでtqdmを更新
+                pbar.set_postfix({"last_moves": len(game_data), "total_states": len(all_data)})
+                pbar.update(1)
 
+    inferencer.shutdown()
     return all_data
 
 

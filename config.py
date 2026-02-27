@@ -18,6 +18,8 @@ class Config:
     # --- 自己対局 ---
     temperature_threshold: int = 30 # この手数まで温度=1.0, 以降は0に近づける
     num_self_play_games: int = 100  # 1イテレーションあたりの自己対局数
+    self_play_threads: int = 32     # 並行して行う自己対局の数
+    inference_batch_size: int = 32  # GPU推論時の最大バッチサイズ
 
     # --- 学習 ---
     batch_size: int = 256

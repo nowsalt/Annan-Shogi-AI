@@ -69,8 +69,8 @@ class MCTSNode:
 class MCTS:
     """モンテカルロ木探索."""
 
-    def __init__(self, model: AnnanNet, config: Config = Config()):
-        self.model = model
+    def __init__(self, inferencer, config: Config = Config()):
+        self.inferencer = inferencer
         self.config = config
 
     @torch.no_grad()
@@ -117,13 +117,11 @@ class MCTS:
             return -1.0  # 合法手なし = 負け
 
         # NNで方策と価値を取得
-        state_tensor = torch.tensor(
-            encode_state(state), dtype=torch.float32
-        ).unsqueeze(0).to(self.config.device)
-
-        policy_logits, value = self.model(state_tensor)
-        policy_logits = policy_logits.squeeze(0).cpu().numpy()
-        value = value.item()
+        state_tensor = encode_state(state)
+        
+        # BatchInferencer を使用して推論を要求し、結果を待つ
+        future = self.inferencer.predict(state_tensor)
+        policy_logits, value = future.result()
 
         # 合法手のみの確率分布を作成
         legal_indices = [move_to_index(m) for m in legal_moves]

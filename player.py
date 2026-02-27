@@ -11,10 +11,24 @@ from mcts import MCTS
 class AIPlayer:
     """AlphaZero方式のAIプレイヤー."""
 
-    def __init__(self, model: AnnanNet, config: Config = Config()):
-        self.model = model
+    def __init__(self, model_or_inferencer, config: Config = Config()):
+        if isinstance(model_or_inferencer, AnnanNet):
+            from inferencer import BatchInferencer
+            self.model = model_or_inferencer
+            self.inferencer = BatchInferencer(model_or_inferencer, config)
+            self._owns_inferencer = True
+        else:
+            self.model = model_or_inferencer.model
+            self.inferencer = model_or_inferencer
+            self._owns_inferencer = False
+            
         self.config = config
-        self.mcts = MCTS(model, config)
+        self.mcts = MCTS(self.inferencer, config)
+
+    def shutdown(self):
+        """自分が生成したInferencerなら終了させる."""
+        if self._owns_inferencer:
+            self.inferencer.shutdown()
 
     def select_move(self, state, temperature: float = 0.0):
         """MCTS探索で最善手を選択する.
