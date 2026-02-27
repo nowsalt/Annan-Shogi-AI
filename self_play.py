@@ -6,6 +6,7 @@ import json
 import time
 import numpy as np
 import torch
+from tqdm import tqdm
 
 ENGINE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Annan-Shogi")
 sys.path.insert(0, ENGINE_DIR)
@@ -96,13 +97,16 @@ def run_self_play(model: AnnanNet, config: Config, num_games: int = None):
     player = AIPlayer(model, config)
     all_data = []
 
-    for i in range(num_games):
-        t0 = time.time()
-        game_data = self_play_game(player, config)
-        elapsed = time.time() - t0
+    print(f"  自己対局 {num_games}局開始...")
+    with tqdm(total=num_games, desc="Self-Play Games") as pbar:
+        for i in range(num_games):
+            t0 = time.time()
+            game_data = self_play_game(player, config)
+            elapsed = time.time() - t0
 
-        all_data.extend(game_data)
-        print(f"  自己対局 {i+1}/{num_games}: {len(game_data)}手 ({elapsed:.1f}秒)")
+            all_data.extend(game_data)
+            pbar.set_postfix({"last_moves": len(game_data), "time": f"{elapsed:.1f}s"})
+            pbar.update(1)
 
     return all_data
 

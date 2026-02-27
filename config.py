@@ -10,7 +10,7 @@ class Config:
     input_channels: int = 44       # 入力チャンネル数 (盤面特徴量)
 
     # --- MCTS ---
-    num_simulations: int = 400      # 1手あたりのシミュレーション回数
+    num_simulations: int = 50       # 1手あたりのシミュレーション回数 (CPU実用向けに400から変更)
     c_puct: float = 1.5             # PUCT探索定数
     dirichlet_alpha: float = 0.3    # ルートノードのDirichletノイズα
     dirichlet_epsilon: float = 0.25 # ノイズの混合比率

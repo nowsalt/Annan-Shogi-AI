@@ -15,17 +15,24 @@ from model import AnnanNet
 class MCTSNode:
     """MCTSの探索ノード."""
 
-    __slots__ = ("state", "parent", "move", "children",
+    __slots__ = ("_state", "parent", "move", "children",
                  "visit_count", "value_sum", "prior")
 
     def __init__(self, state, parent=None, move=None, prior: float = 0.0):
-        self.state = state
+        self._state = state
         self.parent = parent
         self.move = move          # このノードに至った手
         self.children = []        # 子ノードリスト
         self.visit_count = 0
         self.value_sum = 0.0
         self.prior = prior        # NNによる事前確率
+
+    @property
+    def state(self):
+        """状態を遅延評価で生成する."""
+        if self._state is None:
+            self._state = self.parent.state.apply_move(self.move)
+        return self._state
 
     @property
     def q_value(self) -> float:
@@ -129,8 +136,8 @@ class MCTS:
 
         # 子ノードを作成
         for move, prior in zip(legal_moves, priors):
-            child_state = state.apply_move(move)
-            child = MCTSNode(child_state, parent=node, move=move, prior=float(prior))
+            # 状態は遅延評価するため None を渡す
+            child = MCTSNode(None, parent=node, move=move, prior=float(prior))
             node.children.append(child)
 
         return value

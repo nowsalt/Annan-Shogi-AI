@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
+from tqdm import tqdm
 
 ENGINE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Annan-Shogi")
 sys.path.insert(0, ENGINE_DIR)
@@ -136,13 +137,14 @@ def training_loop(config: Config = Config(), num_iterations: int = 10):
             drop_last=False,
         )
 
-        for epoch in range(1, config.num_epochs + 1):
-            losses = train_epoch(model, dataloader, optimizer, device)
-            if epoch % 2 == 0 or epoch == config.num_epochs:
-                print(f"  エポック {epoch}: "
-                      f"損失={losses['total_loss']:.4f} "
-                      f"(方策={losses['policy_loss']:.4f}, "
-                      f"価値={losses['value_loss']:.4f})")
+        with tqdm(range(1, config.num_epochs + 1), desc="Training Epochs") as pbar:
+            for epoch in pbar:
+                losses = train_epoch(model, dataloader, optimizer, device)
+                pbar.set_postfix({
+                    "loss": f"{losses['total_loss']:.4f}", 
+                    "pol": f"{losses['policy_loss']:.4f}", 
+                    "val": f"{losses['value_loss']:.4f}"
+                })
 
         # --- モデル保存 ---
         model_path = f"data/models/model_iter_{iteration:04d}.pt"
